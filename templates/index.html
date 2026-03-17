@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}All Helicorder Plots{% endblock %}
+
+{% block content %}
+<h1>All Helicorder Plots</h1>
+<p>Total Stations: {{ plots|length }}</p>
+
+<ul id="station-list">
+{% for plot in plots %}
+    <li>
+        <a href="{{ plot.id }}.html">
+            <img src="{{ plot.thumbnail }}" alt="{{ plot.id }} Thumbnail" class="thumbnail">
+            <h3>{{ plot.id }}</h3>
+            <p>{{ plot.station.network }}.{{ plot.station.station }}</p>
+            <p>{{ plot.starttime[:16] }} to {{ plot.endtime[:16] }}</p>
+        </a>
+    </li>
+{% endfor %}
+</ul>
+{% endblock %}
