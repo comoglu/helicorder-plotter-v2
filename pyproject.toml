@@ -2,7 +2,7 @@
 name = "helicorder-plotter"
 version = "2.0.0"
 description = "Seismic helicorder plot generator with interactive web output"
-license = {text = "MIT"}
+license = {text = "AGPL-3.0"}
 requires-python = ">=3.9"
 dependencies = [
     "obspy>=1.4.0",

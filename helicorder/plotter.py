@@ -56,8 +56,8 @@ def _render_single(
 
     if sensitivity and sensitivity > 0:
         for tr in st:
-            tr.data = tr.data.astype(np.float64) / sensitivity
-        data_unit = "m/s"
+            tr.data = tr.data.astype(np.float64) / sensitivity * 1e9  # convert to nm/s
+        data_unit = "nm/s"
     else:
         data_unit = "Counts"
         logger.warning("No sensitivity for %s, plotting in raw counts", station.id)
