@@ -11,6 +11,7 @@ from obspy import UTCDateTime
 
 from .config import load_config
 from .fetcher import (
+    fetch_all_sensitivities,
     fetch_all_station_info,
     fetch_all_waveforms,
     fetch_earthquake_events,
@@ -63,21 +64,24 @@ async def run(
 
     logger.info("Processing %d stations for %d hours of data", len(stations), config.hours)
 
-    endtime = UTCDateTime.now()
-    starttime = endtime.replace(minute=0, second=0, microsecond=0) - config.hours * 3600
+    # Round to clean hour boundaries so rows start at 00:00, 01:00, etc.
+    now = UTCDateTime.now()
+    endtime = now.replace(minute=0, second=0, microsecond=0)
+    starttime = endtime - config.hours * 3600
 
     async with aiohttp.ClientSession() as session:
-        # Fetch events and waveforms concurrently
-        events, waveform_results = await asyncio.gather(
+        # Fetch events, waveforms, and sensitivities concurrently
+        events, waveform_results, sensitivity_results = await asyncio.gather(
             fetch_earthquake_events(session, config, starttime, endtime),
             fetch_all_waveforms(session, config, stations, starttime, endtime),
+            fetch_all_sensitivities(session, config, stations),
         )
 
-    # Pair stations with their waveform data, filtering out failures
+    # Pair stations with their waveform data + sensitivity, filtering out failures
     waveform_data = [
-        (station, data)
-        for station, data in zip(stations, waveform_results)
-        if data is not None
+        (station, wf, sens)
+        for station, wf, sens in zip(stations, waveform_results, sensitivity_results)
+        if wf is not None
     ]
 
     logger.info("Got waveforms for %d/%d stations", len(waveform_data), len(stations))

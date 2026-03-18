@@ -1,10 +1,15 @@
 # Helicorder Plotter Configuration
 
 # FDSN dataselect + station service base URL
-base_url: "http://127.0.0.1:18081"
+base_url: "http://127.0.0.1:8081"
 
-# FDSN event service URL (for earthquake annotations)
-event_url: "http://service.iris.edu/fdsnws/event/1/query"
+# Earthquake event source: "ga" (Geoscience Australia) or "iris" (IRIS FDSN)
+# GA provides local Australian events (M2+) plus global events
+# IRIS provides global events only
+event_source: "ga"
+
+# Override event URL (leave empty to use default for chosen source)
+# event_url: ""
 
 # Output directory for generated plots and HTML
 output_dir: "output"
@@ -13,7 +18,7 @@ output_dir: "output"
 max_workers: 8
 
 # Minimum earthquake magnitude to annotate
-min_magnitude: 5.5
+min_magnitude: 3.0
 
 # Hours of waveform data to plot
 hours: 24
@@ -35,7 +40,7 @@ stations:
   2O.BTL09: "BHZ.00"
   2O.BTL10: "BHZ.00"
   AM.R84A0: "EHZ.00"
-  AU.ARMA: "BHZ"
+  AU.ARMA: "BHZ.00"
   AU.ARPS: "BHZ.00"
   AU.AS01: "SHZ"
   AU.AS02: "SHZ"
@@ -66,6 +71,7 @@ stations:
   AU.BRS: "BHZ.00"
   AU.BW1H: "BHZ.00"
   AU.BW2S: "BHZ.00"
+  AU.BW2ST: "BHZ.00"
   AU.CAAN: "HHZ.00"
   AU.CARL: "BHZ.00"
   AU.CMSA: "BHZ.00"
@@ -78,8 +84,8 @@ stations:
   AU.CTA: "BHZ"
   AU.DERBY: "HHZ"
   AU.DLN: "SHZ.00"
-  AU.DPH: "SHZ.00"
-  AU.DRS: "SHZ.00"
+  AU.DPH: "BHZ.00"
+  AU.DRS: "BHZ.00"
   AU.EIDS: "BHZ"
   AU.FITZ: "BHZ"
   AU.FORT: "BHZ.00"
@@ -90,7 +96,7 @@ stations:
   AU.GIRL: "BHZ.00"
   AU.GLAD: "BHZ.00"
   AU.GNGN: "HHZ.00"
-  AU.GVL: "SHZ.00"
+  AU.GVL: "BHZ.00"
   AU.HTT: "BHZ.00"
   AU.INKA: "BHZ.00"
   AU.KDU: "BHZ.00"
@@ -125,7 +131,7 @@ stations:
   AU.MILA: "BHZ.00"
   AU.MLBS: "BHZ.00"
   AU.MOO: "BHZ.00"
-  AU.MORW: "BHZ"
+  AU.MORW: "BHZ.00"
   AU.MTKN: "BHZ.00"
   AU.MTN: "BHZ.00"
   AU.MTSU: "BHZ.00"
@@ -156,7 +162,7 @@ stations:
   AU.PSAD3: "BHZ.00"
   AU.PTPS: "BHZ.00"
   AU.QIS: "BHZ.00"
-  AU.QLP: "BHZ"
+  AU.QLP: "BHZ.00"
   AU.RABL: "BHZ.00"
   AU.RIV: "BHZ.00"
   AU.RK1H: "BHZ.00"
@@ -172,7 +178,7 @@ stations:
   AU.TV1H: "BHZ.00"
   AU.TV2S: "BHZ.00"
   AU.TW1H: "SHZ.00"
-  AU.TWOA: "SHZ.00"
+  AU.TWOA: "BHZ.00"
   AU.WATNG: "BHZ"
   AU.WB0: "BHZ"
   AU.WB1: "BHZ"
@@ -215,3 +221,23 @@ stations:
   YC.TNG6: "EHZ.00"
   YC.TNG7: "EHZ.00"
   YC.TNG8: "BHZ.00"
+  M8.ONGER: "HHZ"
+  M8.WATNG: "HHZ"
+  M8.MOGAR: "HHZ"
+  M8.AU52: "HHZ"
+  M8.AI45: "HHZ"
+  M8.WALLA: "HHZ"
+  3B.WYKM1: "BHZ.00"
+  3B.WYKM3: "BHZ.00"
+  3B.WYKM4: "BHZ.00"
+  3B.WYKM5: "BHZ.00"
+  3B.WYKM6: "BHZ.00"
+  YW.MSWL1: "BHZ.00"
+  YW.MSWL2: "BHZ.00"
+  YW.MSWL3: "BHZ.00"
+  YW.MSWL5: "BHZ.00"
+  YW.MSWL6: "BHZ.00"
+  YW.RDK10: "BHZ.00"
+  YW.SING1: "BHZ.00"
+  YW.SING2: "BHZ.00"
+  YW.SING3: "BHZ.00"

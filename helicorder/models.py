@@ -28,6 +28,7 @@ class Event:
     depth: float
     magnitude: float
     description: str
+    source: str = ""
 
 
 @dataclass

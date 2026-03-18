@@ -11,13 +11,25 @@ from .models import Station
 
 class AppConfig(BaseModel):
     base_url: str = "http://127.0.0.1:18081"
-    event_url: str = "http://service.iris.edu/fdsnws/event/1/query"
+    event_source: str = "ga"  # "ga" for Geoscience Australia, "iris" for IRIS FDSN
+    event_url: str = ""  # Override URL (auto-set based on event_source if empty)
     output_dir: str = "output"
     max_workers: int = 8
-    min_magnitude: float = 5.5
+    min_magnitude: float = 3.0
     hours: int = 24
     timeout: int = 30
     stations: list[Station] = []
+
+    GA_EVENT_URL: str = "https://earthquakes.ga.gov.au/geoserver/earthquakes/wfs"
+    IRIS_EVENT_URL: str = "http://service.iris.edu/fdsnws/event/1/query"
+
+    @property
+    def resolved_event_url(self) -> str:
+        if self.event_url:
+            return self.event_url
+        if self.event_source == "ga":
+            return self.GA_EVENT_URL
+        return self.IRIS_EVENT_URL
 
     model_config = {"arbitrary_types_allowed": True}
 

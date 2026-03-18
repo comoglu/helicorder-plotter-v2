@@ -4,6 +4,7 @@ import io
 import logging
 import os
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from typing import Optional
 
 import matplotlib
 matplotlib.use("Agg")
@@ -23,14 +24,16 @@ def _to_utc(iso: str) -> UTCDateTime:
 
 def _render_single(
     waveform_bytes: bytes,
+    sensitivity: Optional[float],
     station: Station,
     events: list[Event],
     starttime_iso: str,
     endtime_iso: str,
     output_dir: str,
 ) -> PlotResult | None:
-    """Runs in a worker process. Parses waveform, creates plot + thumbnail."""
+    """Runs in a worker process. Parses waveform, removes gain, creates plot."""
     import obspy
+    import numpy as np
 
     starttime = _to_utc(starttime_iso)
     endtime = _to_utc(endtime_iso)
@@ -44,40 +47,119 @@ def _render_single(
     if len(st) == 0:
         return None
 
-    # Convert events to obspy dayplot format
-    obspy_events = []
+    # Detrend + demean, then divide by sensitivity to get m/s
+    try:
+        st.detrend("demean")
+        st.detrend("linear")
+    except Exception as e:
+        logger.warning("Could not detrend %s: %s", station.id, e)
+
+    if sensitivity and sensitivity > 0:
+        for tr in st:
+            tr.data = tr.data.astype(np.float64) / sensitivity
+        data_unit = "m/s"
+    else:
+        data_unit = "Counts"
+        logger.warning("No sensitivity for %s, plotting in raw counts", station.id)
+
+    # Filter events that fall within the plot time window
+    plot_events = []
     for ev in events:
         ev_time = _to_utc(ev.time_iso)
         if starttime <= ev_time <= endtime:
-            obspy_events.append({
-                "time": ev_time,
-                "text": f"{ev.description[:20]}, M{ev.magnitude:.1f}",
-            })
+            plot_events.append((ev_time, ev))
 
     plot_id = station.id
     output_file = os.path.join(output_dir, f"{plot_id}.png")
     thumbnail_file = os.path.join(output_dir, f"{plot_id}_thumb.png")
 
-    fig = Figure(figsize=(10, 7))
+    # Wider figure: extra right margin for event legend
+    fig = Figure(figsize=(12, 7))
     try:
+        # Plot waveform WITHOUT obspy event markers — keep data clean
+        # No vertical_scaling_range → autoscale to actual data amplitudes
         st.plot(
             type="dayplot",
             interval=60,
+            starttime=starttime,
             right_vertical_labels=False,
-            vertical_scaling_range=5e3,
             one_tick_per_line=True,
             color=["k", "r", "b", "g"],
-            show_y_UTC_label=True,
-            events=obspy_events,
+            show_y_UTC_label=False,
+            events=[],
             number_of_ticks=5,
-            tick_format="%H:%M",
+            tick_format="%H:%M UTC",
             vertical_plotting_method="mean",
-            data_unit="mm/s",
+            data_unit=data_unit,
             linewidth=0.5,
             x_labels_size=8,
             y_labels_size=8,
             fig=fig,
         )
+
+        # Replace y-axis labels with clean hour starts
+        if fig.axes:
+            ax = fig.axes[0]
+            ax.set_ylabel("UTC", fontsize=8)
+            yticks = ax.get_yticks()
+            n_rows = int((endtime - starttime) / (60 * 60))
+            clean_labels = []
+            for i in range(len(yticks)):
+                row_start = starttime + i * 60 * 60
+                clean_labels.append(row_start.strftime("%H:%M UTC"))
+            if len(clean_labels) == len(yticks):
+                ax.set_yticklabels(clean_labels)
+
+        # Make room for the event legend on the right
+        fig.subplots_adjust(right=0.75)
+
+        # Draw subtle vertical reference lines for events + build legend
+        ax = fig.axes[0] if fig.axes else None
+        if ax and plot_events:
+            interval_seconds = 60 * 60  # 60 min intervals
+            total_seconds = endtime - starttime
+            n_rows = int(total_seconds / interval_seconds)
+
+            for ev_time, ev in plot_events:
+                # Calculate which row and x-position within that row
+                elapsed = ev_time - starttime
+                row = int(elapsed / interval_seconds)
+                x_in_row = (elapsed - row * interval_seconds) / interval_seconds
+                if 0 <= row < n_rows:
+                    # Thin dashed line — visible but doesn't obscure data
+                    ax.axvline(
+                        x=x_in_row,
+                        ymin=1 - (row + 1) / n_rows,
+                        ymax=1 - row / n_rows,
+                        color="red",
+                        linestyle="--",
+                        linewidth=0.4,
+                        alpha=0.5,
+                    )
+
+            # Event legend in right margin — sorted by time, no overlap
+            legend_y = 0.92
+            fig.text(
+                0.77, 0.96, "Events (UTC)",
+                fontsize=7, fontweight="bold",
+                transform=fig.transFigure,
+            )
+            for ev_time, ev in sorted(plot_events, key=lambda x: x[0]):
+                if legend_y < 0.05:
+                    fig.text(
+                        0.77, legend_y, "...",
+                        fontsize=6, transform=fig.transFigure,
+                    )
+                    break
+                time_str = ev_time.strftime("%H:%M")
+                label = f"{time_str}  M{ev.magnitude:.1f}  {ev.description[:25]}"
+                fig.text(
+                    0.77, legend_y, label,
+                    fontsize=5.5, color="0.3",
+                    transform=fig.transFigure,
+                    verticalalignment="top",
+                )
+                legend_y -= 0.025
 
         title = (
             f"{st[0].stats.network}.{st[0].stats.station}."
@@ -107,7 +189,7 @@ def _render_single(
 
 
 def generate_plots(
-    waveform_data: list[tuple[Station, bytes]],
+    waveform_data: list[tuple[Station, bytes, Optional[float]]],
     events: list[Event],
     starttime: UTCDateTime,
     endtime: UTCDateTime,
@@ -125,14 +207,15 @@ def generate_plots(
         futures = {
             executor.submit(
                 _render_single,
-                data,
+                wf_data,
+                sens,
                 station,
                 events,
                 starttime_iso,
                 endtime_iso,
                 output_dir,
             ): station
-            for station, data in waveform_data
+            for station, wf_data, sens in waveform_data
         }
 
         for future in as_completed(futures):
