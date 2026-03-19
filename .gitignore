@@ -12,3 +12,4 @@ logs/
 *.png
 station_data.json
 .pytest_cache/
+live/seisplotjs/

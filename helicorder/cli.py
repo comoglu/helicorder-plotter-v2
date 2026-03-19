@@ -64,9 +64,9 @@ async def run(
 
     logger.info("Processing %d stations for %d hours of data", len(stations), config.hours)
 
-    # Round to clean hour boundaries so rows start at 00:00, 01:00, etc.
+    # Round endtime UP to the next hour so we include the current partial hour
     now = UTCDateTime.now()
-    endtime = now.replace(minute=0, second=0, microsecond=0)
+    endtime = now.replace(minute=0, second=0, microsecond=0) + 3600
     starttime = endtime - config.hours * 3600
 
     async with aiohttp.ClientSession() as session:

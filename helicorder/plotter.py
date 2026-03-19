@@ -97,15 +97,16 @@ def _render_single(
             fig=fig,
         )
 
-        # Replace y-axis labels with clean hour starts
+        # Replace y-axis labels with actual row start times
+        # interval=60 means each row is 60 minutes (3600 seconds)
+        row_interval_sec = 60 * 60
         if fig.axes:
             ax = fig.axes[0]
             ax.set_ylabel("UTC", fontsize=8)
             yticks = ax.get_yticks()
-            n_rows = int((endtime - starttime) / (60 * 60))
             clean_labels = []
             for i in range(len(yticks)):
-                row_start = starttime + i * 60 * 60
+                row_start = starttime + i * row_interval_sec
                 clean_labels.append(row_start.strftime("%H:%M UTC"))
             if len(clean_labels) == len(yticks):
                 ax.set_yticklabels(clean_labels)
