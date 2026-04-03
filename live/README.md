@@ -1,249 +1,144 @@
-# KOERI Live Seismic Monitoring System
+# Live Seismic Monitoring Dashboard
 
-Production-ready real-time seismic monitoring for KOERI (Kandilli Observatory) network stations.
-
-## Quick Start
-
-```bash
-cd /home/ubuntu/Projects/Cayeli
-python3 -m http.server 8000
-```
-
-Then open: **http://localhost:8000/live/**
-
-## Features
-
-### 1. URL-Based Station Selection
-Monitor specific stations by adding them to the URL:
-
-**Single Station:**
-```
-http://localhost:8000/live/?KO.ISK
-```
-
-**Multiple Stations:**
-```
-http://localhost:8000/live/?KO.ISK,KO.CHAY,KO.ARMT
-```
-
-### 2. Real-time Auto-Update
-- Automatically updates every 30 seconds
-- Live streaming of seismic data
-- No manual refresh needed
-
-### 3. Multiple Time Windows
-For each station, choose:
-- **10m** - 10 minutes of data
-- **30m** - 30 minutes of data
-- **1h** - 1 hour of data
-
-### 4. Clean Professional Display
-- Dark theme optimized for monitoring
-- Seismograph displays using seisplotjs
-- Station metadata (location, elevation, sample rate)
-- Multiple stations in responsive grid
-
-## Usage
-
-### Monitor Single Station
-
-```
-http://localhost:8000/live/?KO.ISK
-```
-
-Shows ISK station (Istanbul) vertical component in real-time.
-
-### Monitor Multiple Stations
-
-```
-http://localhost:8000/live/?KO.ISK,KO.CHAY,KO.ARMT
-```
-
-Shows 3 stations side-by-side with independent time windows.
-
-### Quick Links
-
-**Popular Stations:**
-- [ISK (Istanbul)](http://localhost:8000/live/?KO.ISK)
-- [CHAY (Cayeli, Rize)](http://localhost:8000/live/?KO.CHAY)
-- [ARMT (Armutlu, Yalova)](http://localhost:8000/live/?KO.ARMT)
-
-**Station Pairs:**
-- [ISK + CHAY](http://localhost:8000/live/?KO.ISK,KO.CHAY)
-- [ISK + ARMT](http://localhost:8000/live/?KO.ISK,KO.ARMT)
-
-**Regional Network:**
-- [Marmara Region (3 stations)](http://localhost:8000/live/?KO.ISK,KO.ARMT,KO.AVCI)
-
-## URL Format
-
-```
-?<NETWORK>.<STATION>[,<NETWORK>.<STATION>,...]
-```
-
-**Examples:**
-- `?KO.ISK` - Single station
-- `?KO.ISK,KO.CHAY` - Two stations
-- `?KO.ISK,KO.CHAY,KO.ARMT,KO.AVCI` - Four stations
+A browser-based real-time seismic QC dashboard built with [seisplotjs](https://github.com/crotwell/seisplotjs) v3.1.5-SNAPSHOT. Designed for day-to-day Quality Control of seismic networks, served alongside an FDSNWS-compatible data server (tested with CAPS on port 18002).
 
 ## Files
 
-### Production Files
-- **index.html** - Main live monitoring interface
-- **app.js** - Live monitoring application logic
-- **dashboard.html** - Full station browser (browse all 200+ stations)
-- **dashboard.js** - Dashboard application logic
-
-### Directory Structure
 ```
 live/
-├── index.html          # Main entry point (URL-based monitoring)
-├── app.js             # Live monitoring logic
-├── dashboard.html     # Station browser
-├── dashboard.js       # Dashboard logic
-└── README.md          # This file
+├── dashboard.html          # Main dashboard UI (dark/light theme, collapsible sidebar)
+├── pro-dashboard.js        # Dashboard application (ES module, ~2500 lines)
+├── index.html              # Simple landing page
+├── app.js                  # Minimal single-station viewer (legacy)
+├── dashboard.js            # Legacy dashboard logic
+├── seisplotjs/             # seisplotjs library — NOT tracked in git, must be present locally
+└── README.md               # This file
 ```
 
-## Dashboard Mode
+## Quick Start
 
-For browsing all available stations:
+ES modules require HTTP — open via a local server, not `file://`:
 
+```bash
+cd live/
+python3 -m http.server 8000
+# Open http://localhost:8000/dashboard.html
 ```
-http://localhost:8000/live/dashboard.html
-```
 
-Features:
-- Browse 200+ KO network stations
-- Search by station code or location
-- Interactive map view
-- Click to select and monitor
-- Multiple view modes (Waveforms, Helicorder, etc.)
+For production, point an nginx/Apache document root at this directory.
 
 ## Configuration
 
-Edit [app.js](app.js) to customize:
+Edit the `CONFIG` block at the top of `pro-dashboard.js`:
 
 ```javascript
 const CONFIG = {
-    host: 'eida.koeri.boun.edu.tr',
-    protocol: 'https:',
-    updateInterval: 30000,  // Update every 30 seconds
-    defaultDuration: 600,   // Default 10 minutes of data
+    host: window.location.hostname,   // auto-detects; override if serving from different host
+    protocol: window.location.protocol,
+    port: null,                        // e.g. 18002 for CAPS FDSNWS
+    networks: ['AU', '2O', 'AM', 'YC', 'M8', '3B', 'YW'],
+    updateInterval: 30000,             // waveform auto-refresh in ms
+    helicorderHours: 6,
 };
 ```
 
-## How It Works
+URL parameters can override at runtime:
 
-1. **URL Parsing:** Extracts station codes from URL parameters
-2. **Metadata Fetch:** Loads station information from FDSN station service
-3. **Data Streaming:** Fetches miniSEED data every 30 seconds
-4. **Display:** Uses seisplotjs Seismograph component for professional display
-5. **Auto-Update:** Continuously refreshes data without page reload
+| Parameter    | Example               | Description                              |
+|-------------|-----------------------|------------------------------------------|
+| `port`      | `?port=18002`         | Override FDSNWS port                     |
+| `events`    | `?events=false`       | Disable earthquake event overlay         |
+| `minmag`    | `?minmag=4.0`         | Minimum magnitude for event search       |
+| `maxradius` | `?maxradius=30`       | Event search radius in degrees           |
+| `lat`/`lon` | `?lat=-25&lon=134`    | Centre point for event search            |
 
-## Use Cases
+## Views
 
-### Earthquake Monitoring
-Monitor key stations during seismic events:
-```
-?KO.ISK,KO.CHAY,KO.ARMT
-```
+### Waveforms
+Multi-component real-time seismograph. Auto-refreshes every 30 s while monitoring is active.
 
-### Regional Analysis
-Track multiple stations in a specific region:
-```
-?KO.ISK,KO.ARMT,KO.AVCI,KO.BGKT
-```
+- **Time windows:** 10 min / 30 min / 1 hour / 6 hours / 12 hours / 24 hours
+- **Filters:** None / Bandpass / Highpass / Lowpass (configurable corner frequencies, 2-pole)
+- **Earthquake events:** Overlaid as vertical markers showing origin time and location. Toggle on/off, configure min magnitude (M2–M6) and search radius (10°–180°)
+- **QC indicators per component:** Latency, gap count, RMS amplitude (counts)
 
-### Station Comparison
-Compare nearby stations for local events:
-```
-?KO.ISK,KO.AVCI
-```
+### Helicorder
+Drum-plot style display for the selected station.
 
-### Network Operations
-Monitor critical network stations:
-```
-?KO.ISK,KO.CHAY,KO.BALB,KO.AKS
-```
+- **Duration:** 1 / 6 / 12 / 24 hours; hour-aligned start times
+- **Component:** Auto-selects best Z channel; manually choose Z / E / N / 1 / 2
+- **Line density:** Adapts automatically (fewer lines per hour for longer durations)
 
-## Advantages
+### Particle Motion
+Horizontal plane (E–N or 1–2) particle motion plot.
 
-✅ **URL-Based** - Share links to specific station configurations
-✅ **No Configuration** - Just add stations to URL
-✅ **Auto-Update** - Live streaming every 30 seconds
-✅ **Multiple Stations** - Monitor many stations simultaneously
-✅ **Flexible Time Windows** - 10m, 30m, or 1h per station
-✅ **Professional Display** - seisplotjs components
-✅ **Production Ready** - Clean, focused, reliable
+- Components matched within the same band type (no cross-band mixing)
+- Supports both E/N and 1/2 orientation codes
 
-## Browser Requirements
+### Spectra
+FFT amplitude spectrum per component.
 
-- Modern browser (Chrome, Firefox, Safari, Edge)
-- JavaScript enabled
-- Internet connection to KOERI FDSN services
+- Toggle individual components on/off
+- Axes: Frequency (Hz) vs Amplitude (counts)
 
-## Deployment
+### Spectrogram
+Short-time Fourier transform (STFT) spectrogram.
 
-### Local Development
+- **Duration:** 1 / 5 / 10 / 30 minutes
+- **Frequency range:** Configurable min and max frequency
+- **Component:** Auto or manual selection
+
+### Station Health
+Single-scan QC summary across all network stations. Configurable scan window with adaptive batch sizing for server performance.
+
+**Scan windows:** 5 min / 30 min / 1 hour / 6 hours / 24 hours
+
+**Columns:**
+
+| Column       | Description                                        |
+|-------------|----------------------------------------------------|
+| **Status**  | See status definitions below                       |
+| **Latency** | Age of most recent sample relative to server time  |
+| **Gaps**    | Number of data gaps detected in the scan window    |
+| **RMS Z/E/N** | RMS amplitude in counts per component            |
+| **Channels**| Active channel codes detected                      |
+
+**Status categories:**
+
+| Status      | Colour | Condition                                                          |
+|------------|--------|--------------------------------------------------------------------|
+| OK         | Green  | Latency < 60 s, no gaps                                            |
+| Gaps       | Blue   | Latency OK but one or more data gaps detected                      |
+| Delayed    | Yellow | Latency 60 s – 5 min                                               |
+| Clock Off  | Purple | Negative latency > 10 s (station clock ahead of server — GPS/NTP) |
+| Stale      | Red    | Latency > 5 min                                                    |
+| No Data    | Grey   | No data returned for the scan window                               |
+
+Results are:
+- Sortable by any column (click header)
+- Filterable by status badge (click badge to toggle)
+- Searchable by station code
+- Click a row to jump to that station's Waveforms view
+
+## Channel Support
+
+- **Band codes (priority order):** BH > HH > SH > EH > BN > HN > EN
+- **Orientation codes:** Standard E/N/Z and 1/2/Z (e.g. QIS, QLP)
+- **Excluded automatically:** Infrasound (`I??`), hydroacoustic (`H??`) stations
+
+## Deployment to Production
+
 ```bash
-python3 -m http.server 8000
+# Push local changes to server
+rsync -avz --exclude='seisplotjs/' live/ qcbox:/opt/helicorders-v2/live/
+ssh qcbox "chmod -R a+rX /opt/helicorders-v2/live/"
 ```
 
-### Production Server (nginx)
-```nginx
-server {
-    listen 80;
-    server_name seismic.example.com;
+## Dependencies
 
-    root /path/to/Cayeli/live;
-    index index.html;
+- [seisplotjs](https://github.com/crotwell/seisplotjs) v3.1.5-SNAPSHOT standalone ES module
+- No build step — pure static files
 
-    location / {
-        try_files $uri $uri/ =404;
-    }
-}
-```
+## License
 
-### Production Server (Apache)
-```apache
-<VirtualHost *:80>
-    ServerName seismic.example.com
-    DocumentRoot /path/to/Cayeli/live
-
-    <Directory /path/to/Cayeli/live>
-        Options Indexes FollowSymLinks
-        AllowOverride None
-        Require all granted
-    </Directory>
-</VirtualHost>
-```
-
-## Troubleshooting
-
-### No stations showing
-- Check URL format: `?KO.STATION`
-- Verify station code is correct
-- Check browser console for errors
-
-### No data loading
-- Verify FDSN service is accessible
-- Check if station has recent data
-- Look at browser Network tab for failed requests
-
-### Auto-update not working
-- Check browser console for errors
-- Verify updateInterval is set correctly
-- Ensure page is not in background (some browsers throttle timers)
-
-## Credits
-
-Built with [seisplotjs](https://github.com/crotwell/seisplotjs) by Philip Crotwell.
-Data from KOERI (Kandilli Observatory & Earthquake Research Institute).
-
-## Support
-
-For issues:
-- Check browser console for errors
-- Verify station codes are valid
-- Test with known working stations (ISK, CHAY)
-- Review network requests in developer tools
+AGPL-3.0 — see [`LICENSE`](../LICENSE) at the repository root.

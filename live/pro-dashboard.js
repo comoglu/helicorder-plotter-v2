@@ -28,9 +28,9 @@ function configureQuery(query) {
 
 // Event loading config
 const EVENT_CONFIG = {
-    enabled: urlParams.has('events') ? urlParams.get('events') === 'true' : false,
+    enabled: urlParams.has('events') ? urlParams.get('events') === 'true' : true,
     minMagnitude: parseFloat(urlParams.get('minmag') || '3.0'),
-    maxRadius: parseFloat(urlParams.get('maxradius') || '20'), // degrees
+    maxRadius: parseFloat(urlParams.get('maxradius') || '90'), // degrees
     // Australia center for regional events
     latitude: parseFloat(urlParams.get('lat') || '-25.0'),
     longitude: parseFloat(urlParams.get('lon') || '134.0'),
@@ -113,39 +113,111 @@ function setupEventToggle() {
     const headerControls = document.querySelector('.header-controls');
     if (!headerControls) return;
 
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'position: relative; display: flex; align-items: center; gap: 0;';
+
     const toggleBtn = document.createElement('button');
     toggleBtn.id = 'eventToggleBtn';
     toggleBtn.className = 'status-badge';
-    toggleBtn.style.cursor = 'pointer';
-    toggleBtn.style.border = 'none';
+    toggleBtn.style.cssText = 'cursor: pointer; border: none; border-radius: 20px 0 0 20px; padding-right: 8px;';
     toggleBtn.innerHTML = `
-        <span style="font-size: 14px;">Events</span>
+        <span style="font-size: 13px;">Events</span>
         <span id="event-count-badge" style="background: #ef4444; color: white; border-radius: 10px; padding: 1px 6px; font-size: 11px; display: none;"></span>
+    `;
+
+    const settingsBtn = document.createElement('button');
+    settingsBtn.className = 'status-badge';
+    settingsBtn.style.cssText = 'cursor: pointer; border: none; border-radius: 0 20px 20px 0; padding: 5px 8px; border-left: 1px solid rgba(255,255,255,0.2); font-size: 10px;';
+    settingsBtn.textContent = '▼';
+
+    const dropdown = document.createElement('div');
+    dropdown.style.cssText = 'display: none; position: absolute; top: 100%; right: 0; margin-top: 6px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 12px; z-index: 200; min-width: 220px; box-shadow: 0 4px 12px rgba(0,0,0,0.2);';
+    dropdown.innerHTML = `
+        <div style="font-size: 12px; color: var(--text); margin-bottom: 8px; font-weight: 600;">Event Settings</div>
+        <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">
+            <span>Min Mag:</span>
+            <select id="event-min-mag" style="background: var(--bg-input); color: var(--text); border: 1px solid var(--border); padding: 3px 6px; border-radius: 4px; font-size: 12px;">
+                <option value="2" ${EVENT_CONFIG.minMagnitude === 2 ? 'selected' : ''}>M2+</option>
+                <option value="3" ${EVENT_CONFIG.minMagnitude === 3 ? 'selected' : ''}>M3+</option>
+                <option value="4" ${EVENT_CONFIG.minMagnitude === 4 ? 'selected' : ''}>M4+</option>
+                <option value="5" ${EVENT_CONFIG.minMagnitude === 5 ? 'selected' : ''}>M5+</option>
+                <option value="6" ${EVENT_CONFIG.minMagnitude === 6 ? 'selected' : ''}>M6+</option>
+            </select>
+        </label>
+        <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-secondary); margin-bottom: 10px;">
+            <span>Radius:</span>
+            <select id="event-max-radius" style="background: var(--bg-input); color: var(--text); border: 1px solid var(--border); padding: 3px 6px; border-radius: 4px; font-size: 12px;">
+                <option value="10" ${EVENT_CONFIG.maxRadius === 10 ? 'selected' : ''}>10°</option>
+                <option value="20" ${EVENT_CONFIG.maxRadius === 20 ? 'selected' : ''}>20°</option>
+                <option value="45" ${EVENT_CONFIG.maxRadius === 45 ? 'selected' : ''}>45°</option>
+                <option value="90" ${EVENT_CONFIG.maxRadius === 90 ? 'selected' : ''}>90°</option>
+                <option value="180" ${EVENT_CONFIG.maxRadius === 180 ? 'selected' : ''}>180° (global)</option>
+            </select>
+        </label>
+        <button id="event-refresh-btn" style="width: 100%; padding: 5px; background: var(--accent); color: #fff; border: none; border-radius: 4px; font-size: 12px; cursor: pointer;">Refresh Events</button>
     `;
 
     if (EVENT_CONFIG.enabled) {
         toggleBtn.style.background = 'rgba(74, 158, 255, 0.3)';
+        settingsBtn.style.background = 'rgba(74, 158, 255, 0.3)';
     }
 
-    toggleBtn.addEventListener('click', async () => {
+    const updateEventBtnStyle = () => {
+        const bg = EVENT_CONFIG.enabled ? 'rgba(74, 158, 255, 0.3)' : 'rgba(255,255,255,0.1)';
+        toggleBtn.style.background = bg;
+        settingsBtn.style.background = bg;
+        toggleBtn.querySelector('span').style.textDecoration = EVENT_CONFIG.enabled ? 'none' : 'line-through';
+    };
+
+    toggleBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
         EVENT_CONFIG.enabled = !EVENT_CONFIG.enabled;
-        toggleBtn.style.background = EVENT_CONFIG.enabled
-            ? 'rgba(74, 158, 255, 0.3)'
-            : 'rgba(255,255,255,0.1)';
+        updateEventBtnStyle();
 
         if (EVENT_CONFIG.enabled && state.events.length === 0) {
             await fetchEvents();
         }
 
-        // Refresh current view to show/hide markers
         if (state.isMonitoring && state.selectedStation) {
             fetchDataForCurrentView();
         }
     });
 
-    // Insert before the start button
+    settingsBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+    });
+
+    // Close dropdown on outside click
+    document.addEventListener('click', (e) => {
+        if (!wrapper.contains(e.target)) dropdown.style.display = 'none';
+    });
+
+    wrapper.appendChild(toggleBtn);
+    wrapper.appendChild(settingsBtn);
+    wrapper.appendChild(dropdown);
+
     const startBtn = document.getElementById('startBtn');
-    headerControls.insertBefore(toggleBtn, startBtn);
+    headerControls.insertBefore(wrapper, startBtn);
+
+    // Wire up dropdown controls after they're in the DOM
+    setTimeout(() => {
+        document.getElementById('event-min-mag')?.addEventListener('change', (e) => {
+            EVENT_CONFIG.minMagnitude = parseFloat(e.target.value);
+        });
+        document.getElementById('event-max-radius')?.addEventListener('change', (e) => {
+            EVENT_CONFIG.maxRadius = parseFloat(e.target.value);
+        });
+        document.getElementById('event-refresh-btn')?.addEventListener('click', async () => {
+            dropdown.style.display = 'none';
+            EVENT_CONFIG.enabled = true;
+            updateEventBtnStyle();
+            await fetchEvents();
+            if (state.isMonitoring && state.selectedStation) {
+                fetchDataForCurrentView();
+            }
+        });
+    }, 0);
 }
 
 // Load stations
@@ -263,6 +335,11 @@ function selectStation(stationCode) {
 
 // Display current view
 function displayCurrentView() {
+    // Health summary doesn't need a selected station
+    if (state.currentView === 'health') {
+        displayHealthSummary();
+        return;
+    }
     if (!state.selectedStation) return;
 
     switch (state.currentView) {
@@ -301,6 +378,9 @@ function displayWaveforms() {
                         <button class="time-btn active" data-duration="600">10 min</button>
                         <button class="time-btn" data-duration="1800">30 min</button>
                         <button class="time-btn" data-duration="3600">1 hour</button>
+                        <button class="time-btn" data-duration="21600">6 hours</button>
+                        <button class="time-btn" data-duration="43200">12 hours</button>
+                        <button class="time-btn" data-duration="86400">24 hours</button>
                     </div>
                     <div style="display: flex; gap: 15px; align-items: center; border-left: 1px solid var(--border); padding-left: 20px;">
                         <label style="color: var(--text-secondary); font-size: 12px; display: flex; align-items: center; gap: 8px;">
@@ -324,6 +404,16 @@ function displayWaveforms() {
                     </div>
                 </div>
             </div>
+            <details style="margin: 10px 0; padding: 10px 15px; background: var(--bg-input); border-radius: 6px; border: 1px solid var(--border); font-size: 12px; color: var(--text-secondary); line-height: 1.6;">
+                <summary style="cursor: pointer; font-weight: 600; color: var(--text); font-size: 13px;">About this view</summary>
+                <div style="margin-top: 8px;">
+                    <p style="margin: 0 0 8px;">Shows real-time 3-component (E/N/Z or 1/2/Z) seismograms for the selected station with linked zoom and pan. All components share the same time axis so you can compare arrivals across channels.</p>
+                    <p style="margin: 0 0 8px;"><strong>Time window</strong> — Choose 10 min, 30 min, or 1 hour of recent data. Data refreshes automatically while monitoring is active.</p>
+                    <p style="margin: 0 0 8px;"><strong>Filters</strong> — Apply bandpass, highpass, or lowpass filters. Presets offer common ranges (e.g. 1-10 Hz for local/regional events). Filters are applied client-side after data is fetched.</p>
+                    <p style="margin: 0 0 8px;"><strong>QC indicators</strong> — The subtitle bar shows per-channel: sample rate, data latency (green &lt;2m, orange 2-10m, red &gt;10m), gap count, and RMS noise level (raw counts).</p>
+                    <p style="margin: 0;"><strong>Interaction</strong> — Mouse wheel to zoom, click-drag to pan. All three components move together.</p>
+                </div>
+            </details>
             <div id="organized-display-container" style="min-height: 600px;">
                 <div class="loading">
                     <div class="spinner"></div>
@@ -493,11 +583,52 @@ async function fetchWaveformData(duration = 600) {
             return;
         }
 
-        // Update subtitle with sample rate and channel info
+        // Compute QC stats for each component
+        const qcStats = validSeismograms.map(seis => {
+            const latencyMs = sp.luxon.DateTime.utc().toMillis() - seis.endTime.toMillis();
+            const latencySec = latencyMs / 1000;
+            const gaps = seis.segments ? seis.segments.length - 1 : 0;
+            // RMS: sqrt(mean(x^2)) after removing mean
+            let rms = 0;
+            if (seis.isContiguous && seis.isContiguous()) {
+                const y = seis.y;
+                const n = y.length;
+                if (n > 0) {
+                    let sum = 0, sumSq = 0;
+                    for (let i = 0; i < n; i++) { sum += y[i]; }
+                    const mean = sum / n;
+                    for (let i = 0; i < n; i++) { sumSq += (y[i] - mean) ** 2; }
+                    rms = Math.sqrt(sumSq / n);
+                }
+            } else if (seis.segments) {
+                let totalSq = 0, totalN = 0;
+                for (const seg of seis.segments) {
+                    const y = seg.y;
+                    const n = y.length;
+                    let sum = 0;
+                    for (let i = 0; i < n; i++) { sum += y[i]; }
+                    const mean = sum / n;
+                    for (let i = 0; i < n; i++) { totalSq += (y[i] - mean) ** 2; }
+                    totalN += n;
+                }
+                if (totalN > 0) rms = Math.sqrt(totalSq / totalN);
+            }
+            return { channelCode: seis.channelCode, sampleRate: seis.sampleRate, latencySec, gaps, rms };
+        });
+
+        // Update subtitle with sample rate, latency, gaps, RMS
         const subtitle = document.getElementById('waveform-subtitle');
         if (subtitle) {
-            const info = validSeismograms.map(s => `${s.channelCode} ${s.sampleRate} sps`).join(', ');
-            subtitle.textContent = `${station.siteName} | ${info} (linked zoom/pan)`;
+            const info = qcStats.map(q => {
+                const latStr = q.latencySec < 60 ? `${q.latencySec.toFixed(0)}s`
+                    : q.latencySec < 3600 ? `${(q.latencySec / 60).toFixed(1)}m`
+                    : `${(q.latencySec / 3600).toFixed(1)}h`;
+                const latColor = q.latencySec < 120 ? '#4caf50' : q.latencySec < 600 ? '#ff9800' : '#ef4444';
+                const gapStr = q.gaps > 0 ? ` <span style="color: #ff9800;">${q.gaps} gap${q.gaps > 1 ? 's' : ''}</span>` : '';
+                const rmsStr = q.rms > 0 ? ` RMS:${q.rms.toFixed(1)}` : '';
+                return `${q.channelCode} ${q.sampleRate}sps <span style="color:${latColor};">lag:${latStr}</span>${gapStr}${rmsStr}`;
+            }).join(' | ');
+            subtitle.innerHTML = `${station.siteName} | ${info}`;
         }
 
         // Convert to SeismogramDisplayData and apply filters
@@ -507,41 +638,59 @@ async function fetchWaveformData(duration = 600) {
             return sdd;
         });
 
-        // If events enabled, attach quakes and travel time markers
-        // If events enabled, attach quakes and travel time markers
+        // If events enabled, add event markers with location & origin time
         if (EVENT_CONFIG.enabled && state.events.length > 0 && station.latitude && station.longitude) {
-            for (const sdd of displayDataList) {
-                sdd.addQuake(state.events);
-            }
-            // Fetch travel times for each event (in parallel)
-            const ttPromises = state.events.map(async (quake) => {
+            for (const quake of state.events) {
                 try {
-                    if (!quake.hasPreferredOrigin()) return;
+                    if (!quake.hasPreferredOrigin()) continue;
+                    const mag = quake.hasPreferredMagnitude() ? `M${quake.preferredMagnitude.mag.toFixed(1)}` : 'M?';
+                    const depthKm = (quake.depth / 1000).toFixed(0);
+                    const loc = quake.description || `${quake.latitude.toFixed(1)}/${quake.longitude.toFixed(1)}`;
                     const distDeg = sp.distaz.distaz(
                         station.latitude, station.longitude,
                         quake.latitude, quake.longitude
                     ).delta;
-                    const ttQuery = new sp.traveltime.TraveltimeQuery()
-                        .distdeg(distDeg)
-                        .evdepth(quake.depthKm || 10)
-                        .phases('P,S,p,s,Pn,Sn');
-                    const ttResult = await ttQuery.queryJson();
-                    if (ttResult && ttResult.arrivals) {
-                        // Use seisplotjs marker helpers
-                        const markers = sp.seismographmarker.createMarkersForTravelTimes(quake, ttResult);
-                        for (const sdd of displayDataList) {
-                            for (const marker of markers) {
-                                if (sdd.timeRange.contains(marker.time)) {
-                                    sdd.markerList.push(marker);
-                                }
-                            }
+
+                    // Origin time marker
+                    const originMarker = {
+                        markertype: 'predicted',
+                        name: `${mag} ${loc}`,
+                        time: quake.time,
+                        description: `${quake.time.toFormat('HH:mm:ss')} ${depthKm}km ${distDeg.toFixed(1)}°`,
+                    };
+
+                    // P arrival marker (rough estimate: ~12 km/s for P at teleseismic)
+                    // Use TauP for accuracy if available, otherwise skip
+                    let pMarker = null;
+                    try {
+                        const ttQuery = new sp.traveltime.TraveltimeQuery()
+                            .distdeg(distDeg)
+                            .evdepth(quake.depth / 1000 || 10)
+                            .phases('P,p,Pn');
+                        const ttResult = await ttQuery.queryJson();
+                        if (ttResult && ttResult.arrivals && ttResult.arrivals.length > 0) {
+                            const firstP = ttResult.arrivals[0];
+                            pMarker = {
+                                markertype: 'predicted',
+                                name: `${firstP.phase} ${mag}`,
+                                time: quake.time.plus({ seconds: firstP.time }),
+                                description: `${loc} ${distDeg.toFixed(1)}°`,
+                            };
+                        }
+                    } catch (e) { /* travel time service unavailable, skip */ }
+
+                    for (const sdd of displayDataList) {
+                        if (sdd.timeRange.contains(originMarker.time)) {
+                            sdd.markerList.push(originMarker);
+                        }
+                        if (pMarker && sdd.timeRange.contains(pMarker.time)) {
+                            sdd.markerList.push(pMarker);
                         }
                     }
-                } catch (ttErr) {
-                    console.warn('Travel time query failed:', ttErr.message);
+                } catch (err) {
+                    console.warn('Event marker failed:', err.message);
                 }
-            });
-            await Promise.all(ttPromises);
+            }
         }
 
         // Create shared config with linked time and amplitude scales
@@ -639,6 +788,17 @@ function displayHelicorderPanel() {
                     </div>
                 </div>
             </div>
+            <details style="margin: 10px 0; padding: 10px 15px; background: var(--bg-input); border-radius: 6px; border: 1px solid var(--border); font-size: 12px; color: var(--text-secondary); line-height: 1.6;">
+                <summary style="cursor: pointer; font-weight: 600; color: var(--text); font-size: 13px;">About this view</summary>
+                <div style="margin-top: 8px;">
+                    <p style="margin: 0 0 8px;">A helicorder (drum recorder) display showing continuous waveform data stacked in horizontal lines, each representing a fixed time interval. The most recent data is at the bottom.</p>
+                    <p style="margin: 0 0 8px;"><strong>Channel</strong> — Select which component to display (e.g. BHZ, HHZ, SHZ). Available channels depend on what the station provides.</p>
+                    <p style="margin: 0 0 8px;"><strong>Duration</strong> — Choose how far back to display: 1, 6, 12, or 24 hours. Longer durations use fewer lines per hour to keep the display readable.</p>
+                    <p style="margin: 0 0 8px;"><strong>Amplitude</strong> — <em>Auto</em> scales each line independently. <em>Fixed</em> uses a constant amplitude value (useful for comparing across time). <em>Min/Max</em> uses the full data range.</p>
+                    <p style="margin: 0 0 8px;"><strong>Filters</strong> — Same as waveforms: bandpass, highpass, or lowpass with presets or custom values.</p>
+                    <p style="margin: 0;"><strong>QC use</strong> — Look for changes in background noise level, sudden amplitude increases (events), data gaps (blank sections), or telemetry dropouts across the time window.</p>
+                </div>
+            </details>
             <div id="helicorder-display" style="padding: 20px;">
                 <div class="loading">
                     <div class="spinner"></div>
@@ -977,7 +1137,7 @@ function displayHelicorder(seismogram, hours) {
         heliElement.seisData = [displayData];
         heliElement.draw();
 
-        console.log(`✅ Helicorder displayed for ${hours} hours`);
+        console.log(`✅ Helicorder displayed for ${hours} hours (${numLines} lines)`);
 
     } catch (error) {
         console.error('Error displaying helicorder:', error);
@@ -1029,6 +1189,15 @@ function displayParticleMotion() {
                     </label>
                 </div>
             </div>
+            <details style="margin: 10px 0; padding: 10px 15px; background: var(--bg-input); border-radius: 6px; border: 1px solid var(--border); font-size: 12px; color: var(--text-secondary); line-height: 1.6;">
+                <summary style="cursor: pointer; font-weight: 600; color: var(--text); font-size: 13px;">About this view</summary>
+                <div style="margin-top: 8px;">
+                    <p style="margin: 0 0 8px;">Particle motion plots show how ground motion moves in 2D space by plotting one component against another. Three projections are shown: E-N (horizontal plane), E-Z (east-vertical), and N-Z (north-vertical).</p>
+                    <p style="margin: 0 0 8px;"><strong>Filters</strong> — Filtering is especially useful here. A bandpass filter (e.g. 1-10 Hz) isolates specific wave types and makes the particle motion pattern clearer.</p>
+                    <p style="margin: 0 0 8px;"><strong>QC use</strong> — A healthy broadband station with ambient noise should show roughly circular/random motion in the E-N plane. Strong linear patterns may indicate a dominant source direction. Elliptical patterns in the vertical plane can reveal Rayleigh wave arrivals.</p>
+                    <p style="margin: 0;"><strong>Note</strong> — Stations using orientation codes 1/2 instead of E/N are supported. The dashboard matches components from the same band type to avoid mixing sensor outputs.</p>
+                </div>
+            </details>
             <div id="particle-display" style="padding: 20px;">
                 <div class="loading">
                     <div class="spinner"></div>
@@ -1281,6 +1450,16 @@ function displaySpectra() {
                     </div>
                 </div>
             </div>
+            <details style="margin: 10px 0; padding: 10px 15px; background: var(--bg-input); border-radius: 6px; border: 1px solid var(--border); font-size: 12px; color: var(--text-secondary); line-height: 1.6;">
+                <summary style="cursor: pointer; font-weight: 600; color: var(--text); font-size: 13px;">About this view</summary>
+                <div style="margin-top: 8px;">
+                    <p style="margin: 0 0 8px;">Shows the frequency content of the signal using a Fast Fourier Transform (FFT). Amplitude is plotted on a log scale (Y axis) against frequency on a log scale (X axis).</p>
+                    <p style="margin: 0 0 8px;"><strong>Channels</strong> — Toggle individual components on/off using the checkboxes. This lets you compare the spectral content of different channels overlaid on the same plot.</p>
+                    <p style="margin: 0 0 8px;"><strong>Filters</strong> — Applying a filter before computing the FFT will shape the spectrum accordingly. This can help isolate frequency bands of interest.</p>
+                    <p style="margin: 0 0 8px;"><strong>QC use</strong> — Look for spectral peaks that indicate cultural noise (e.g. machinery at specific frequencies), sensor problems (sharp resonance peaks), or site effects. A flat spectrum at low amplitudes across all frequencies may indicate a dead or disconnected channel.</p>
+                    <p style="margin: 0;"><strong>Note</strong> — The FFT is computed from the most recent 10 minutes of data for the selected station. Amplitude units are raw counts (not corrected for instrument response).</p>
+                </div>
+            </details>
             <div id="spectra-display" style="padding: 20px;">
                 <div class="loading">
                     <div class="spinner"></div>
@@ -1479,7 +1658,14 @@ function displaySpectraPlot(seismograms) {
         }
 
         // Create spectra plot with all components overlaid
-        const spectraPlot = new sp.spectraplot.SpectraPlot(fftResults);
+        const spectraConfig = new sp.seismographconfig.SeismographConfig();
+        spectraConfig.xLabel = 'Frequency';
+        spectraConfig.xSublabel = 'Hz';
+        spectraConfig.yLabel = 'Amplitude';
+        spectraConfig.ySublabel = 'counts';
+        spectraConfig.ySublabelIsUnits = false;
+
+        const spectraPlot = new sp.spectraplot.SpectraPlot(fftResults, spectraConfig);
         spectraPlot.style.width = '100%';
         spectraPlot.style.height = '500px';
         container.appendChild(spectraPlot);
@@ -1522,6 +1708,17 @@ function displaySpectrogram() {
                     </div>
                     <div style="border-left: 1px solid #2a3f5f; padding-left: 15px; display: flex; gap: 15px; align-items: center;">
                         <label style="color: #7a8ca0; font-size: 12px; display: flex; align-items: center; gap: 6px;">
+                            <span>Min Freq:</span>
+                            <select id="sg-min-freq" style="${selectStyle}">
+                                <option value="0" selected>0 Hz</option>
+                                <option value="0.1">0.1 Hz</option>
+                                <option value="0.5">0.5 Hz</option>
+                                <option value="1">1 Hz</option>
+                                <option value="2">2 Hz</option>
+                                <option value="5">5 Hz</option>
+                            </select>
+                        </label>
+                        <label style="color: #7a8ca0; font-size: 12px; display: flex; align-items: center; gap: 6px;">
                             <span>Max Freq:</span>
                             <select id="sg-max-freq" style="${selectStyle}">
                                 <option value="0">Full (Nyquist)</option>
@@ -1552,6 +1749,17 @@ function displaySpectrogram() {
                     </div>
                 </div>
             </div>
+            <details style="margin: 10px 0; padding: 10px 15px; background: var(--bg-input); border-radius: 6px; border: 1px solid var(--border); font-size: 12px; color: var(--text-secondary); line-height: 1.6;">
+                <summary style="cursor: pointer; font-weight: 600; color: var(--text); font-size: 13px;">About this view</summary>
+                <div style="margin-top: 8px;">
+                    <p style="margin: 0 0 8px;">A spectrogram shows how the frequency content of a signal changes over time. Time runs left to right, frequency runs bottom to top, and colour intensity represents amplitude (warm colours = higher energy).</p>
+                    <p style="margin: 0 0 8px;"><strong>Channel</strong> — Select which component to analyse. Only one channel is shown at a time.</p>
+                    <p style="margin: 0 0 8px;"><strong>Duration</strong> — Choose 1, 5, 10, or 30 minutes. Shorter durations give finer time resolution; longer durations show more context.</p>
+                    <p style="margin: 0 0 8px;"><strong>Max Freq</strong> — Limits the upper frequency displayed. Use lower values (5-10 Hz) to focus on teleseismic/regional signals, or "Full (Nyquist)" to see the entire bandwidth.</p>
+                    <p style="margin: 0 0 8px;"><strong>Window &amp; Overlap</strong> — Controls the Short-Time Fourier Transform (STFT). Larger windows give better frequency resolution but poorer time resolution. Higher overlap produces smoother results but takes longer to compute.</p>
+                    <p style="margin: 0;"><strong>QC use</strong> — Persistent horizontal lines indicate continuous tonal noise (machinery, electronics). Broadband vertical streaks are transient events (earthquakes, blasts). Gaps in the spectrogram correspond to data gaps.</p>
+                </div>
+            </details>
             <div id="spectrogram-display" style="padding: 20px;">
                 <div class="loading">
                     <div class="spinner"></div>
@@ -1586,6 +1794,7 @@ function displaySpectrogram() {
     document.getElementById('stft-window-size').addEventListener('change', () => fetchSpectrogramData());
     document.getElementById('stft-overlap').addEventListener('change', () => fetchSpectrogramData());
     document.getElementById('sg-max-freq').addEventListener('change', () => fetchSpectrogramData());
+    document.getElementById('sg-min-freq').addEventListener('change', () => fetchSpectrogramData());
 
     if (state.isMonitoring) {
         fetchSpectrogramData();
@@ -1636,10 +1845,12 @@ async function fetchSpectrogramData() {
     const station = state.selectedStation;
     if (!station) return;
 
+    let startTime, endTime;
     const duration = state.spectrogramDuration || 600;
-    const endTime = sp.luxon.DateTime.utc();
-    const startTime = endTime.minus({ seconds: duration });
-    const channelCode = state.spectrogramChannel || '??Z';
+    endTime = sp.luxon.DateTime.utc();
+    startTime = endTime.minus({ seconds: duration });
+    // Use helicorder channel if available, otherwise spectrogram channel
+    const channelCode = state.spectrogramChannel || state.helicorderChannel || '??Z';
 
     try {
         const dsQuery = configureQuery(new sp.fdsndataselect.DataSelectQuery())
@@ -1802,11 +2013,15 @@ function drawSpectrogramHeatmap(container, stftResults, timeStamps, sampleRate, 
     const [firstAmp] = stftResults[0].asAmpPhase();
     const numFreqBins = firstAmp.length;
 
-    // Max frequency clipping
+    // Frequency clipping
     const maxFreqSetting = parseFloat(document.getElementById('sg-max-freq')?.value || '0');
+    const minFreqSetting = parseFloat(document.getElementById('sg-min-freq')?.value || '0');
     const nyquist = sampleRate / 2;
     const displayMaxFreq = (maxFreqSetting > 0 && maxFreqSetting < nyquist) ? maxFreqSetting : nyquist;
-    const displayBins = Math.ceil((displayMaxFreq / nyquist) * numFreqBins);
+    const displayMinFreq = (minFreqSetting > 0 && minFreqSetting < displayMaxFreq) ? minFreqSetting : 0;
+    const maxBin = Math.ceil((displayMaxFreq / nyquist) * numFreqBins);
+    const minBin = Math.floor((displayMinFreq / nyquist) * numFreqBins);
+    const displayBins = maxBin - minBin;
 
     // Build magnitude matrix and find min/max for color scaling
     const magnitudes = [];
@@ -1817,15 +2032,16 @@ function drawSpectrogramHeatmap(container, stftResults, timeStamps, sampleRate, 
         const [amp] = stftResults[t].asAmpPhase();
         magnitudes[t] = [];
 
-        for (let f = 0; f < displayBins; f++) {
+        for (let fi = 0; fi < displayBins; fi++) {
+            const f = fi + minBin;
             const mag = 20 * Math.log10(amp[f] + 1e-10); // dB scale
-            magnitudes[t][f] = mag;
+            magnitudes[t][fi] = mag;
             if (mag > maxMag) maxMag = mag;
             if (mag < minMag) minMag = mag;
         }
     }
 
-    console.log(`Magnitude range: ${minMag.toFixed(1)} to ${maxMag.toFixed(1)} dB | Display: 0-${displayMaxFreq} Hz (${displayBins}/${numFreqBins} bins)`);
+    console.log(`Magnitude range: ${minMag.toFixed(1)} to ${maxMag.toFixed(1)} dB | Display: ${displayMinFreq}-${displayMaxFreq} Hz (${displayBins}/${numFreqBins} bins)`);
 
     // Define margins for axes
     const margin = { top: 50, right: 120, bottom: 60, left: 70 };
@@ -1870,10 +2086,9 @@ function drawSpectrogramHeatmap(container, stftResults, timeStamps, sampleRate, 
     ctx.lineTo(margin.left, margin.top + plotHeight);
     ctx.stroke();
 
-    const maxFreq = displayMaxFreq;
     const freqTicks = 6;
     for (let i = 0; i <= freqTicks; i++) {
-        const freq = (maxFreq * i) / freqTicks;
+        const freq = displayMinFreq + ((displayMaxFreq - displayMinFreq) * i) / freqTicks;
         const y = margin.top + plotHeight - (i / freqTicks) * plotHeight;
 
         ctx.beginPath();
@@ -2015,7 +2230,317 @@ function getHeatmapColor(value) {
     }
 }
 
-// Draw color scale legend
+// Station Health — single streamlined QC scan
+let healthResults = [];
+let healthSortCol = 'status';
+let healthSortAsc = true;
+let healthStatusFilter = null;
+
+async function displayHealthSummary() {
+    const panel = document.getElementById('health-panel');
+    const selectStyle = 'background: var(--bg-input); color: var(--text); border: 1px solid var(--border); padding: 6px 12px; border-radius: 4px; font-size: 13px;';
+    panel.innerHTML = `
+        <div class="seismograph-container">
+            <div class="seismograph-header">
+                <div>
+                    <div class="seismograph-title">Station QC Health</div>
+                    <div id="health-subtitle" style="font-size: 12px; color: var(--text-secondary); margin-top: 5px;">Check data availability, gaps, and noise across all stations</div>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <input type="text" id="healthSearch" placeholder="Search stations..." style="${selectStyle} width: 180px;">
+                    <select id="healthDuration" style="${selectStyle}">
+                        <option value="300">5 min</option>
+                        <option value="1800">30 min</option>
+                        <option value="3600" selected>1 hour</option>
+                        <option value="21600">6 hours</option>
+                        <option value="86400">24 hours</option>
+                    </select>
+                    <button class="btn btn-primary" id="healthScanBtn">Scan</button>
+                </div>
+            </div>
+            <details id="health-help" style="margin: 10px 0; padding: 10px 15px; background: var(--bg-input); border-radius: 6px; border: 1px solid var(--border); font-size: 12px; color: var(--text-secondary); line-height: 1.6;">
+                <summary style="cursor: pointer; font-weight: 600; color: var(--text); font-size: 13px; margin-bottom: 4px;">How to read this table</summary>
+                <div style="margin-top: 8px;">
+                    <p style="margin: 0 0 8px;"><strong>Scan Window</strong> — Choose how far back to look for data. Shorter windows (5 min) scan faster and are good for checking current latency. Longer windows (6h, 24h) take more time but reveal intermittent gaps.</p>
+                    <p style="margin: 0 0 8px;"><strong>What gets scanned</strong> — For each station, the vertical (Z) component is queried from the FDSNWS server. The scan checks latency, data gaps, and RMS noise level.</p>
+                    <p style="margin: 0 0 10px;"><strong>Status categories:</strong></p>
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
+                        <tr><td style="padding: 3px 8px;"><span class="health-badge health-good">OK</span></td><td style="padding: 3px 8px;">Latency under 2 minutes, no data gaps. Station is healthy.</td></tr>
+                        <tr><td style="padding: 3px 8px;"><span class="health-badge health-gappy">Gaps</span></td><td style="padding: 3px 8px;">Latency is fine but there are gaps in the data within the scan window. May indicate telemetry dropouts or buffer issues.</td></tr>
+                        <tr><td style="padding: 3px 8px;"><span class="health-badge health-warn">Delayed</span></td><td style="padding: 3px 8px;">Latency between 2 and 10 minutes. Data is arriving but slower than expected.</td></tr>
+                        <tr><td style="padding: 3px 8px;"><span class="health-badge health-clockoff">Clock Off</span></td><td style="padding: 3px 8px;">Data timestamps are more than 10 seconds ahead of server time. Indicates the station clock is not synchronised (GPS/NTP issue).</td></tr>
+                        <tr><td style="padding: 3px 8px;"><span class="health-badge health-bad">Stale</span></td><td style="padding: 3px 8px;">Latency over 10 minutes. Station may be down or experiencing significant telemetry delays.</td></tr>
+                        <tr><td style="padding: 3px 8px;"><span class="health-badge health-unknown">No Data</span></td><td style="padding: 3px 8px;">No data returned for this station within the scan window. Could be offline or not yet acquired.</td></tr>
+                    </table>
+                    <p style="margin: 0 0 8px;"><strong>Columns:</strong></p>
+                    <ul style="margin: 0 0 8px; padding-left: 20px;">
+                        <li><strong>Channel</strong> — The Z-component channel code returned (e.g. BHZ, HHZ, SHZ).</li>
+                        <li><strong>Rate</strong> — Sample rate in samples per second.</li>
+                        <li><strong>Latency</strong> — Time difference between now and the last sample timestamp. Measured at the moment each station is scanned. Negative values (purple) mean the station clock is ahead.</li>
+                        <li><strong>Gaps</strong> — Number of data gaps (discontinuities) found in the scan window. More gaps in a short window suggests telemetry problems.</li>
+                        <li><strong>RMS</strong> — Root-mean-square amplitude of the raw signal (counts). Useful for spotting dead channels (RMS near 0) or unusually noisy stations. Only computed for contiguous data.</li>
+                    </ul>
+                    <p style="margin: 0;"><strong>Tips:</strong> Click column headers to sort. Use the filter badges to show only a specific status. Click any station row to jump to its waveforms. The search box filters by station code, name, network, or channel.</p>
+                </div>
+            </details>
+            <div id="health-table-container">
+                <p style="color: var(--text-secondary); padding: 20px;">Select a scan window and click "Scan" to check all stations.<br>Shorter windows are faster. Longer windows reveal more gaps.</p>
+            </div>
+        </div>
+    `;
+
+    document.getElementById('healthScanBtn').addEventListener('click', runHealthScan);
+    document.getElementById('healthSearch').addEventListener('input', (e) => {
+        if (healthResults.length > 0) renderHealthTable(healthResults, e.target.value);
+    });
+
+    if (healthResults.length > 0) renderHealthTable(healthResults, '');
+}
+
+function renderHealthTable(results, searchQuery) {
+    const container = document.getElementById('health-table-container');
+    if (!container) return;
+
+    // Filter by status
+    let filtered = results;
+    if (healthStatusFilter) {
+        const filterStatuses = healthStatusFilter === 'nodata' ? ['nodata', 'error'] : [healthStatusFilter];
+        filtered = filtered.filter(r => filterStatuses.includes(r.status));
+    }
+    // Filter by search
+    if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        filtered = filtered.filter(r =>
+            r.station.code.toLowerCase().includes(q) ||
+            r.station.siteName.toLowerCase().includes(q) ||
+            r.station.network.toLowerCase().includes(q) ||
+            r.channel.toLowerCase().includes(q) ||
+            r.status.toLowerCase().includes(q)
+        );
+    }
+
+    // Sort
+    const statusOrder = { good: 0, gappy: 1, warn: 2, clockoff: 3, bad: 4, nodata: 5, error: 6 };
+    const sortFn = (a, b) => {
+        let va, vb;
+        switch (healthSortCol) {
+            case 'station': va = `${a.station.network}.${a.station.code}`; vb = `${b.station.network}.${b.station.code}`; return healthSortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+            case 'status': va = statusOrder[a.status] || 5; vb = statusOrder[b.status] || 5; break;
+            case 'channel': va = a.channel; vb = b.channel; return healthSortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+            case 'sampleRate': va = a.sampleRate; vb = b.sampleRate; break;
+            case 'latency': va = a.latency ?? 999999; vb = b.latency ?? 999999; break;
+            case 'gaps': va = a.gaps; vb = b.gaps; break;
+            case 'rms': va = a.rms; vb = b.rms; break;
+            default: va = 0; vb = 0;
+        }
+        return healthSortAsc ? va - vb : vb - va;
+    };
+    filtered.sort(sortFn);
+
+    // Count summary (from full results, not filtered)
+    const counts = { good: 0, gappy: 0, warn: 0, clockoff: 0, bad: 0, nodata: 0, error: 0 };
+    results.forEach(r => counts[r.status] = (counts[r.status] || 0) + 1);
+
+    const arrow = (col) => healthSortCol === col ? (healthSortAsc ? ' ▲' : ' ▼') : '';
+    const activeStyle = (status) => healthStatusFilter === status ? 'outline: 2px solid var(--accent); outline-offset: 1px;' : 'cursor: pointer; opacity: 0.8;';
+    const allActive = !healthStatusFilter ? 'outline: 2px solid var(--accent); outline-offset: 1px;' : 'cursor: pointer; opacity: 0.8;';
+
+    // Show scan window label
+    const durationSelect = document.getElementById('healthDuration');
+    const durLabels = { 300: '5 min', 1800: '30 min', 3600: '1 hour', 21600: '6 hours', 86400: '24 hours' };
+    const scanLabel = durationSelect ? (durLabels[durationSelect.value] || durationSelect.value + 's') : '';
+
+    container.innerHTML = `
+        <div style="margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+            <span class="health-badge" data-filter="" style="${allActive} cursor: pointer; background: rgba(107,114,128,0.15); color: var(--text);">${results.length} All</span>
+            <span class="health-badge health-good" data-filter="good" style="${activeStyle('good')} cursor: pointer;">${counts.good} OK</span>
+            <span class="health-badge health-gappy" data-filter="gappy" style="${activeStyle('gappy')} cursor: pointer;">${counts.gappy} Gaps</span>
+            <span class="health-badge health-warn" data-filter="warn" style="${activeStyle('warn')} cursor: pointer;">${counts.warn} Delayed</span>
+            <span class="health-badge health-clockoff" data-filter="clockoff" style="${activeStyle('clockoff')} cursor: pointer;">${counts.clockoff} Clock Off</span>
+            <span class="health-badge health-bad" data-filter="bad" style="${activeStyle('bad')} cursor: pointer;">${counts.bad} Stale</span>
+            <span class="health-badge health-unknown" data-filter="nodata" style="${activeStyle('nodata')} cursor: pointer;">${counts.nodata + counts.error} No Data</span>
+            <span style="color: var(--text-secondary); font-size: 12px; margin-left: 10px;">${filtered.length}/${results.length} stations | Window: ${scanLabel}</span>
+        </div>
+        <div style="max-height: 550px; overflow-y: auto;">
+        <table class="health-table">
+            <thead>
+                <tr>
+                    <th data-sort="station">Station${arrow('station')}</th>
+                    <th data-sort="status">Status${arrow('status')}</th>
+                    <th data-sort="channel">Channel${arrow('channel')}</th>
+                    <th data-sort="sampleRate">Rate${arrow('sampleRate')}</th>
+                    <th data-sort="latency">Latency${arrow('latency')}</th>
+                    <th data-sort="gaps">Gaps${arrow('gaps')}</th>
+                    <th data-sort="rms">RMS${arrow('rms')}</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${filtered.map(r => {
+                    const stKey = `${r.station.network}.${r.station.code}`;
+                    const statusLabels = { good: 'OK', gappy: 'Gaps', warn: 'Delayed', clockoff: 'Clock Off', bad: 'Stale', nodata: 'No Data', error: 'Error' };
+                    const statusClasses = { good: 'health-good', gappy: 'health-gappy', warn: 'health-warn', clockoff: 'health-clockoff', bad: 'health-bad', nodata: 'health-unknown', error: 'health-bad' };
+                    const statusLabel = statusLabels[r.status] || 'Unknown';
+                    const statusClass = statusClasses[r.status] || 'health-unknown';
+                    let latStr = '-';
+                    if (r.latency !== null) {
+                        const absLat = Math.abs(r.latency);
+                        latStr = absLat < 60 ? `${absLat.toFixed(0)}s` : absLat < 3600 ? `${(absLat / 60).toFixed(1)}m` : `${(absLat / 3600).toFixed(1)}h`;
+                        if (r.latency < 0) latStr = `-${latStr}`;
+                    }
+                    const latColor = r.latency !== null && r.latency < 0 ? 'color: #a78bfa;' : '';
+                    const rmsStr = r.rms > 0 ? r.rms.toFixed(1) : '-';
+                    const gapStr = r.gaps > 0 ? `<span style="color:#ff9800;">${r.gaps}</span>` : '0';
+                    return `<tr class="clickable-row" data-station="${stKey}">
+                        <td><strong>${stKey}</strong><br><span style="font-size:11px;color:var(--text-secondary);">${r.station.siteName}</span></td>
+                        <td><span class="health-badge ${statusClass}">${statusLabel}</span></td>
+                        <td>${r.channel}</td>
+                        <td>${r.sampleRate > 0 ? r.sampleRate + ' sps' : '-'}</td>
+                        <td style="${latColor}">${latStr}</td>
+                        <td>${gapStr}</td>
+                        <td>${rmsStr}</td>
+                    </tr>`;
+                }).join('')}
+            </tbody>
+        </table>
+        </div>
+    `;
+
+    // Status filter badges
+    container.querySelectorAll('.health-badge[data-filter]').forEach(badge => {
+        badge.addEventListener('click', () => {
+            healthStatusFilter = badge.dataset.filter || null;
+            const searchInput = document.getElementById('healthSearch');
+            renderHealthTable(healthResults, searchInput ? searchInput.value : '');
+        });
+    });
+
+    // Sort on header click
+    container.querySelectorAll('th[data-sort]').forEach(th => {
+        th.addEventListener('click', () => {
+            const col = th.dataset.sort;
+            if (healthSortCol === col) { healthSortAsc = !healthSortAsc; }
+            else { healthSortCol = col; healthSortAsc = true; }
+            const searchInput = document.getElementById('healthSearch');
+            renderHealthTable(healthResults, searchInput ? searchInput.value : '');
+        });
+    });
+
+    // Click row to navigate to station waveforms
+    container.querySelectorAll('.clickable-row').forEach(row => {
+        row.style.cursor = 'pointer';
+        row.addEventListener('click', () => {
+            const stCode = row.dataset.station;
+            if (stCode) {
+                const waveTab = document.querySelector('[data-view="waveforms"]');
+                if (waveTab) waveTab.click();
+                selectStation(stCode);
+            }
+        });
+    });
+}
+
+// Single streamlined QC scan
+async function runHealthScan() {
+    const container = document.getElementById('health-table-container');
+    const btn = document.getElementById('healthScanBtn');
+    const durationSelect = document.getElementById('healthDuration');
+    const duration = parseInt(durationSelect?.value || '3600');
+    const durLabels = { 300: '5 min', 1800: '30 min', 3600: '1 hr', 21600: '6 hr', 86400: '24 hr' };
+    const label = durLabels[duration] || `${duration}s`;
+
+    btn.disabled = true;
+    btn.textContent = 'Scanning...';
+
+    container.innerHTML = `
+        <div class="health-scanning">
+            <div class="spinner"></div>
+            <p>Scanning ${state.stations.length} stations (${label} window)...</p>
+        </div>
+    `;
+
+    const endTime = sp.luxon.DateTime.utc();
+    const startTime = endTime.minus({ seconds: duration });
+    healthResults = [];
+
+    // Adaptive batch size: shorter windows can handle more parallel requests
+    const batchSize = duration <= 1800 ? 10 : duration <= 21600 ? 5 : 2;
+
+    for (let i = 0; i < state.stations.length; i += batchSize) {
+        const batch = state.stations.slice(i, i + batchSize);
+        const batchResults = await Promise.all(batch.map(async (station) => {
+            try {
+                const dsQuery = configureQuery(new sp.fdsndataselect.DataSelectQuery())
+                    .networkCode(station.network)
+                    .stationCode(station.code)
+                    .channelCode('??Z')
+                    .startTime(startTime)
+                    .endTime(endTime)
+                    .nodata(404);
+
+                const records = await dsQuery.queryDataRecords();
+                if (!records || records.length === 0) {
+                    return { station, status: 'nodata', latency: null, gaps: 0, rms: 0, channel: '-', sampleRate: 0 };
+                }
+
+                const seismograms = sp.miniseed.seismogramPerChannel(records);
+                if (seismograms.length === 0) {
+                    return { station, status: 'nodata', latency: null, gaps: 0, rms: 0, channel: '-', sampleRate: 0 };
+                }
+
+                const zSeis = seismograms[0];
+                // Use current time (not query endTime) for accurate latency
+                const nowMs = sp.luxon.DateTime.utc().toMillis();
+                const latencySec = (nowMs - zSeis.endTime.toMillis()) / 1000;
+                const gaps = zSeis.segments ? zSeis.segments.length - 1 : 0;
+
+                let rms = 0;
+                try {
+                    if (zSeis.isContiguous && zSeis.isContiguous()) {
+                        const y = zSeis.y, n = y.length;
+                        if (n > 0) {
+                            let sum = 0, sumSq = 0;
+                            for (let j = 0; j < n; j++) sum += y[j];
+                            const mean = sum / n;
+                            for (let j = 0; j < n; j++) sumSq += (y[j] - mean) ** 2;
+                            rms = Math.sqrt(sumSq / n);
+                        }
+                    }
+                } catch (e) { /* ignore */ }
+
+                let status;
+                if (latencySec < -10) {
+                    // Significantly negative = station clock ahead of server
+                    status = 'clockoff';
+                } else if (latencySec >= 600) {
+                    status = 'bad';
+                } else if (latencySec >= 120) {
+                    status = 'warn';
+                } else if (gaps > 0) {
+                    status = 'gappy';
+                } else {
+                    status = 'good';
+                }
+                return { station, status, latency: latencySec, gaps, rms, channel: zSeis.channelCode, sampleRate: zSeis.sampleRate };
+            } catch (err) {
+                return { station, status: 'error', latency: null, gaps: 0, rms: 0, channel: '-', sampleRate: 0 };
+            }
+        }));
+        healthResults.push(...batchResults);
+
+        const progress = Math.min(100, Math.round((i + batchSize) / state.stations.length * 100));
+        const scanningEl = container.querySelector('.health-scanning p');
+        if (scanningEl) scanningEl.textContent = `Scanning... ${progress}% (${Math.min(i + batchSize, state.stations.length)}/${state.stations.length})`;
+    }
+
+    healthSortCol = 'status';
+    healthSortAsc = true;
+    renderHealthTable(healthResults, '');
+
+    btn.disabled = false;
+    btn.textContent = 'Scan';
+    console.log(`Health scan complete: ${healthResults.length} stations, ${label} window`);
+}
+
 // Fetch data for current view
 function fetchDataForCurrentView() {
     switch (state.currentView) {

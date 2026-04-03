@@ -53,26 +53,36 @@
         }
 
         .app {
-            display: grid; grid-template-columns: 350px 1fr;
-            grid-template-rows: 60px 1fr; height: 100vh; gap: 0;
+            display: grid; grid-template-columns: 280px 1fr;
+            grid-template-rows: 48px 1fr; height: 100vh; gap: 0;
+            transition: grid-template-columns 0.2s ease;
         }
+        .app.sidebar-collapsed { grid-template-columns: 0px 1fr; }
+        .app.sidebar-collapsed .sidebar { overflow: hidden; border-right: none; width: 0; min-width: 0; }
 
         .header {
             grid-column: 1 / -1;
             background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             display: flex; justify-content: space-between; align-items: center;
-            padding: 0 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.15); z-index: 100;
+            padding: 0 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.15); z-index: 100;
         }
 
-        .logo { display: flex; align-items: center; gap: 15px; }
-        .logo-icon { font-size: 32px; }
-        .logo-text h1 { font-size: 20px; color: #fff; font-weight: 600; }
-        .logo-text p { font-size: 11px; color: rgba(255,255,255,0.8); }
-        .header-controls { display: flex; gap: 15px; align-items: center; }
+        .logo { display: flex; align-items: center; gap: 10px; }
+        .logo-icon { font-size: 26px; }
+        .logo-text h1 { font-size: 17px; color: #fff; font-weight: 600; }
+        .logo-text p { font-size: 10px; color: rgba(255,255,255,0.8); }
+
+        .sidebar-toggle {
+            background: rgba(255,255,255,0.15); border: none; color: #fff;
+            padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 16px;
+            margin-right: 6px; line-height: 1;
+        }
+        .sidebar-toggle:hover { background: rgba(255,255,255,0.25); }
+        .header-controls { display: flex; gap: 10px; align-items: center; }
 
         .status-badge {
-            display: flex; align-items: center; gap: 8px; padding: 8px 16px;
-            background: rgba(255,255,255,0.1); border-radius: 20px; font-size: 13px; color: #fff;
+            display: flex; align-items: center; gap: 6px; padding: 5px 12px;
+            background: rgba(255,255,255,0.1); border-radius: 20px; font-size: 12px; color: #fff;
         }
         .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #666; }
         .status-dot.active { background: #4caf50; animation: pulse-dot 2s infinite; }
@@ -90,52 +100,52 @@
         }
 
 
-        .search-box { margin-bottom: 15px; }
+        .search-box { margin-bottom: 10px; }
         .search-box input {
-            width: 100%; padding: 10px 15px; background: var(--bg-input);
+            width: 100%; padding: 8px 12px; background: var(--bg-input);
             border: 1px solid var(--border); border-radius: 6px;
-            color: var(--text); font-size: 13px;
+            color: var(--text); font-size: 12px;
         }
         .search-box input:focus { outline: none; border-color: var(--accent); }
 
         .station-item {
-            padding: 12px; margin-bottom: 8px; background: var(--bg-card);
-            border: 1px solid var(--border); border-radius: 6px;
+            padding: 8px 10px; margin-bottom: 4px; background: var(--bg-card);
+            border: 1px solid var(--border); border-radius: 5px;
             cursor: pointer; transition: all 0.2s;
         }
         .station-item:hover { border-color: var(--accent); box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
         .station-item.selected { background: rgba(37,99,235,0.08); border-color: var(--accent); }
-        .station-code { font-size: 15px; font-weight: 600; color: var(--accent); margin-bottom: 4px; }
-        .station-location { font-size: 11px; color: var(--text-secondary); }
+        .station-code { font-size: 13px; font-weight: 600; color: var(--accent); margin-bottom: 2px; }
+        .station-location { font-size: 10px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 
         .main-content { background: var(--bg); overflow: auto; }
 
         .view-tabs {
-            display: flex; gap: 10px; padding: 20px 30px 0;
+            display: flex; gap: 4px; padding: 8px 15px 0;
             border-bottom: 1px solid var(--border);
         }
         .view-tab {
-            padding: 10px 20px; background: transparent; border: none;
-            color: var(--text-secondary); cursor: pointer; font-size: 14px;
+            padding: 7px 14px; background: transparent; border: none;
+            color: var(--text-secondary); cursor: pointer; font-size: 13px;
             font-weight: 500; border-bottom: 3px solid transparent; transition: all 0.3s;
         }
         .view-tab:hover { color: var(--text); }
         .view-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
 
-        .content-panel { display: none; padding: 30px; }
+        .content-panel { display: none; padding: 15px; }
         .content-panel.active { display: block; }
 
         .seismograph-container {
-            background: var(--bg-card); border-radius: 10px; padding: 20px;
-            margin-bottom: 20px; border: 1px solid var(--border);
+            background: var(--bg-card); border-radius: 8px; padding: 14px;
+            margin-bottom: 12px; border: 1px solid var(--border);
             box-shadow: 0 1px 3px rgba(0,0,0,0.06);
         }
         .seismograph-header {
             display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid var(--border);
+            margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border);
         }
-        .seismograph-title { font-size: 18px; color: var(--text-heading); font-weight: 600; }
+        .seismograph-title { font-size: 16px; color: var(--text-heading); font-weight: 600; }
         .time-controls { display: flex; gap: 10px; }
         .time-btn {
             padding: 6px 12px; background: var(--bg-input); border: 1px solid var(--border);
@@ -159,14 +169,14 @@
         sp-organized-display-item { min-height: 200px; display: block; }
 
         .particle-motion-container, .spectra-container {
-            background: var(--bg-card); border-radius: 10px; padding: 20px;
-            border: 1px solid var(--border); margin-bottom: 20px;
+            background: var(--bg-card); border-radius: 8px; padding: 14px;
+            border: 1px solid var(--border); margin-bottom: 12px;
         }
 
-        .empty-state { text-align: center; padding: 80px 20px; color: var(--text-secondary); }
-        .empty-state-icon { font-size: 64px; margin-bottom: 20px; opacity: 0.3; }
-        .empty-state h3 { font-size: 20px; margin-bottom: 10px; color: var(--text); }
-        .empty-state p { font-size: 14px; }
+        .empty-state { text-align: center; padding: 60px 20px; color: var(--text-secondary); }
+        .empty-state-icon { font-size: 48px; margin-bottom: 15px; opacity: 0.3; }
+        .empty-state h3 { font-size: 18px; margin-bottom: 8px; color: var(--text); }
+        .empty-state p { font-size: 13px; }
 
         .loading { text-align: center; padding: 40px; color: var(--text-secondary); }
         .spinner {
@@ -181,8 +191,8 @@
         ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 
         .btn {
-            padding: 10px 24px; border: none; border-radius: 6px;
-            cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.3s;
+            padding: 7px 18px; border: none; border-radius: 5px;
+            cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.3s;
         }
         .btn-primary { background: var(--accent); color: #fff; }
         .btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,99,235,0.3); }
@@ -191,12 +201,12 @@
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
         #helicorder-display, #particle-display, #waveforms-panel, #organized-display-container {
-            background: var(--sp-bg); border-radius: 10px; padding: 20px;
+            background: var(--sp-bg); border-radius: 8px; padding: 12px;
             border: 1px solid var(--border); min-height: 400px;
         }
         #spectra-display {
-            background: var(--sp-bg); border-radius: 10px; padding: 20px;
-            border: 1px solid var(--border); min-height: 600px;
+            background: var(--sp-bg); border-radius: 8px; padding: 12px;
+            border: 1px solid var(--border); min-height: 500px;
         }
 
         sp-helicorder, sp-seismograph, sp-organized-display, sp-particle-motion { background: var(--sp-bg); display: block; }
@@ -207,6 +217,21 @@
         sp-helicorder .grid line, sp-seismograph .grid line, sp-organized-display .grid line, sp-particle-motion .grid line, sp-spectra-plot .grid line { stroke: var(--sp-grid) !important; stroke-opacity: 0.5 !important; }
         sp-helicorder .seispath, sp-seismograph .seispath, sp-organized-display .seispath { stroke: var(--sp-trace) !important; }
         sp-particle-motion path, sp-spectra-plot path { stroke: var(--sp-trace) !important; }
+
+        .health-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .health-table th { text-align: left; padding: 10px 12px; background: var(--bg-input); color: var(--text-heading); font-weight: 600; border-bottom: 2px solid var(--border); position: sticky; top: 0; cursor: pointer; }
+        .health-table th:hover { color: var(--accent); }
+        .health-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+        .health-table tr:hover { background: rgba(37,99,235,0.05); }
+        .health-table tr.clickable { cursor: pointer; }
+        .health-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+        .health-good { background: rgba(34,197,94,0.15); color: #22c55e; }
+        .health-warn { background: rgba(255,152,0,0.15); color: #ff9800; }
+        .health-bad { background: rgba(239,68,68,0.15); color: #ef4444; }
+        .health-unknown { background: rgba(107,114,128,0.15); color: #6b7280; }
+        .health-clockoff { background: rgba(167,139,250,0.15); color: #a78bfa; }
+        .health-gappy { background: rgba(59,130,246,0.15); color: #3b82f6; }
+        .health-scanning { text-align: center; padding: 40px; color: var(--text-secondary); }
     </style>
 </head>
 <body>
@@ -214,6 +239,7 @@
         <!-- Header -->
         <div class="header">
             <div class="logo">
+                <button class="sidebar-toggle" id="sidebarToggle" title="Toggle sidebar" onclick="toggleSidebar()">&#9776;</button>
                 <div class="logo-icon">🌍</div>
                 <div class="logo-text">
                     <h1>Seismic Station Dashboard</h1>
@@ -226,7 +252,7 @@
                     <div class="status-dot" id="statusDot"></div>
                     <span id="statusText">Ready</span>
                 </div>
-                <button class="theme-toggle" onclick="toggleTheme()" title="Toggle dark/light mode" id="themeBtn">&#9790;</button>
+                <button class="theme-toggle" onclick="toggleTheme()" title="Toggle dark/light theme" id="themeBtn">&#9790;</button>
                 <button class="btn btn-primary" id="startBtn">Start Monitoring</button>
                 <button class="btn btn-danger" id="stopBtn" disabled>Stop</button>
             </div>
@@ -234,10 +260,10 @@
 
         <!-- Sidebar -->
         <div class="sidebar">
-            <div class="search-box" style="padding: 15px 15px 0;">
+            <div class="search-box" style="padding: 10px 10px 0;">
                 <input type="text" id="searchInput" placeholder="Search stations...">
             </div>
-            <div id="stationList" style="flex: 1; overflow-y: auto; padding: 0 15px 15px;">
+            <div id="stationList" style="flex: 1; overflow-y: auto; padding: 0 10px 10px;">
                 <div class="loading">
                     <div class="spinner"></div>
                     <p>Loading stations...</p>
@@ -248,11 +274,12 @@
         <!-- Main Content -->
         <div class="main-content">
             <div class="view-tabs">
-                <button class="view-tab active" data-view="waveforms">Waveforms (3-Component)</button>
+                <button class="view-tab active" data-view="waveforms">Waveforms</button>
                 <button class="view-tab" data-view="helicorder">Helicorder</button>
                 <button class="view-tab" data-view="particle">Particle Motion</button>
                 <button class="view-tab" data-view="spectra">Spectra</button>
                 <button class="view-tab" data-view="spectrogram">Spectrogram</button>
+                <button class="view-tab" data-view="health">Station Health</button>
             </div>
 
             <!-- Waveforms Panel -->
@@ -299,6 +326,14 @@
                     <p>Choose a station to view time-frequency spectrogram</p>
                 </div>
             </div>
+
+            <!-- Station Health Panel -->
+            <div class="content-panel" id="health-panel">
+                <div class="empty-state">
+                    <h3>Station Health Summary</h3>
+                    <p>Click "Start Monitoring" to scan all stations</p>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -310,12 +345,25 @@
             document.getElementById('themeBtn').innerHTML = isDark ? '&#9790;' : '&#9788;';
             localStorage.setItem('theme', isDark ? 'light' : 'dark');
         }
+        function toggleSidebar() {
+            const app = document.querySelector('.app');
+            app.classList.toggle('sidebar-collapsed');
+            const btn = document.getElementById('sidebarToggle');
+            btn.innerHTML = app.classList.contains('sidebar-collapsed') ? '&#9655;' : '&#9776;';
+            localStorage.setItem('sidebarCollapsed', app.classList.contains('sidebar-collapsed'));
+        }
         (function() {
             const saved = localStorage.getItem('theme');
             if (saved === 'dark') {
                 document.documentElement.setAttribute('data-theme', 'dark');
                 document.addEventListener('DOMContentLoaded', () => {
                     document.getElementById('themeBtn').innerHTML = '&#9788;';
+                });
+            }
+            if (localStorage.getItem('sidebarCollapsed') === 'true') {
+                document.addEventListener('DOMContentLoaded', () => {
+                    document.querySelector('.app').classList.add('sidebar-collapsed');
+                    document.getElementById('sidebarToggle').innerHTML = '&#9655;';
                 });
             }
         })();
